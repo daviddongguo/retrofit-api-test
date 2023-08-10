@@ -1,0 +1,18 @@
+units = [
+  'cup',
+  'tablespoon',
+  'teaspoon',
+  'gram',
+  'kilogram',
+  'ounce',
+  'pound',
+  'liter',
+  'milliliter',
+  'gallon',
+  'quart',
+  'pint',
+  'fluid ounce',
+  'dash',
+  'pinch',
+  'drop',
+]

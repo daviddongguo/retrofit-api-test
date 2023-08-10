@@ -1,0 +1,46 @@
+skin rose
+
+class DietRepositoryInterface {
+ + GetThisWeekDietByUserId(userId: string): List<Diet>
+ + GetPreWeekDietByUserId(userId: string, currentDate: date): List<Diet>
+ + GetNextWeekDietByUserId(userId: string, currentDate: date): List<Diet>
+ + AddDiet(diet: Diet)
+ - GetDietByUserIdBetweenFromDateAndEndDate(userId: string, fromDate: date, endDate: date): List<Diet>
+}
+
+class User {
+ + id: string
+ + email: string
+}
+
+class Diet {
+ + id: string
+ + userId: string
+ + date: date
+ + calorie: number
+ + foodImagePath: string
+ + foodDescription: string
+ + ingredients: IngredientQuantity[]
+}
+
+
+
+class IngredientQuantity {
+  + ingredientId: string
+  + quantity: number
+}
+
+class Ingredient {
+ + id: string
+ + name: string
+ + unit: string
+ + calorie: number
+}
+
+User "1" o-- "Many" Diet
+IngredientQuantity "1" o-- "1" Ingredient
+Diet "1" o-- "Many" IngredientQuantity
+
+
+
+@enduml

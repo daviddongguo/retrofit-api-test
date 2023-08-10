@@ -49,11 +49,8 @@ public class MainActivity extends AppCompatActivity {
                 call.enqueue(new Callback<CalorieResults>() {
                     @Override
                     public void onResponse(Call<CalorieResults> call, Response<CalorieResults> response) {
-
                         Log.d("TAG", response.code() + "");
-
                         String displayResponse = "";
-
                         CalorieResults results = response.body();
                         for(Ingredient ingredient  : results.items){
                             displayResponse += ingredient.name + " :  " + ingredient.calories + "\n";
