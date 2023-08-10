@@ -5,8 +5,14 @@ plugins {
 android {
     namespace 'xyz.dongguo.retrofit'
     compileSdk 33
+    def Properties properties = new Properties()
+    properties.load(project.rootProject.file("local.properties").newDataInputStream())
+
 
     defaultConfig {
+
+        resValue "string", "apikey", properties.getProperty("ninjas.apiKey", "")
+
         applicationId "xyz.dongguo.retrofit"
         minSdk 24
         targetSdk 33
@@ -41,3 +47,4 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
 }
+
