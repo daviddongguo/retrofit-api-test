@@ -14,7 +14,6 @@ import com.anychart.AnyChartView;
 import com.anychart.chart.common.dataentry.DataEntry;
 import com.anychart.chart.common.dataentry.ValueDataEntry;
 import com.anychart.charts.Cartesian;
-import com.anychart.charts.Pie;
 import com.anychart.core.cartesian.series.Line;
 import com.anychart.data.Mapping;
 import com.anychart.data.Set;
@@ -22,8 +21,10 @@ import com.anychart.enums.Orientation;
 import com.anychart.enums.ScaleStackMode;
 import com.anychart.scales.Linear;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import io.realm.Realm;
 import io.realm.RealmConfiguration;
@@ -56,6 +57,25 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // init Realm
+        Realm.init(this); // context, usually an Activity or Application
+        String realmName = "My Project";
+        RealmConfiguration config = new RealmConfiguration.Builder().name(realmName).allowWritesOnUiThread(true).build();
+        uiThreadRealm = Realm.getInstance(config);
+        SimpleDateFormat dateFormat = new SimpleDateFormat("MMM d", Locale.US);
+        List<DataEntry> data = new ArrayList<>();
+        try {
+            RealmResults<DateTimeCalorie> results = uiThreadRealm.where(DateTimeCalorie.class).findAll();
+            entries.clear();
+            for (DateTimeCalorie dateTimeCalorie : results) {
+                Log.d("TAG", "Task: " );
+                Log.d("TAG", "Task: " + dateTimeCalorie.getDateTime() + dateTimeCalorie.getCalories().toString());
+                data.add(new CustomDataEntry(dateFormat.format(dateTimeCalorie.getDateTime()), 50, 250, 500, dateTimeCalorie.getCalories()));
+            }
+        } catch (Exception ex) {
+            Log.d("Error", ex.toString());
+        }
+
         // chart
         AnyChartView anyChartView = findViewById(R.id.any_chart_view);
 
@@ -79,19 +99,20 @@ public class MainActivity extends AppCompatActivity {
                 .padding(0d, 0d, 0d, 5d)
                 .format("{%Value}%");
 
-        List<DataEntry> data = new ArrayList<>();
-        data.add(new CustomDataEntry("P1", 96.5, 2040, 1200, 1600));
-        data.add(new CustomDataEntry("P2", 77.1, 1794, 1124, 1724));
-        data.add(new CustomDataEntry("P3", 73.2, 2026, 1006, 1806));
-        data.add(new CustomDataEntry("P4", 61.1, 2341, 921, 1621));
-        data.add(new CustomDataEntry("P5", 70.0, 1800, 1500, 1700));
-        data.add(new CustomDataEntry("P6", 60.7, 1507, 1007, 1907));
-        data.add(new CustomDataEntry("P7", 62.1, 2701, 921, 1821));
-        data.add(new CustomDataEntry("P8", 75.1, 1671, 971, 1671));
-        data.add(new CustomDataEntry("P9", 80.0, 1980, 1080, 1880));
-        data.add(new CustomDataEntry("P10", 54.1, 1041, 1041, 1641));
-        data.add(new CustomDataEntry("P11", 51.3, 813, 1113, 1913));
-        data.add(new CustomDataEntry("P12", 59.1, 691, 1091, 1691));
+//        List<DataEntry> data = new ArrayList<>();
+        data.add(new CustomDataEntry("Aug 15", 96.5, 2040, 1200, 1600));
+        data.add(new CustomDataEntry("Aug 16", 50.1, 1794, 1124, 1724));
+        data.add(new CustomDataEntry("Aug 17", 73.2, 2026, 1006, 1806));
+        data.add(new CustomDataEntry("Aug 18", 50.1, 2341, 921, 1621));
+        data.add(new CustomDataEntry("Aug 19", 70.0, 1800, 1500, 1700));
+//        data.add(new CustomDataEntry("Aug 6", 60.7, 1507, 1007, 1907));
+//        data.add(new CustomDataEntry("Aug 7", 62.1, 2701, 921, 1821));
+//        data.add(new CustomDataEntry("Aug 8", 75.1, 1671, 971, 1671));
+//        data.add(new CustomDataEntry("Aug 9", 80.0, 1980, 1080, 1880));
+//        data.add(new CustomDataEntry("Aug 10", 54.1, 1041, 1041, 1641));
+//        data.add(new CustomDataEntry("Aug 11", 51.3, 813, 1113, 1913));
+//        data.add(new CustomDataEntry("Aug 12", 59.1, 691, 1091, 1691));
+//        data.add(new CustomDataEntry("Aug 15", 96.5, 2040, 1200, 1600));
 
         Set set = Set.instantiate();
         set.data(data);
@@ -114,11 +135,7 @@ public class MainActivity extends AppCompatActivity {
 
         // end of char
 
-        // init Realm
-        Realm.init(this); // context, usually an Activity or Application
-        String realmName = "My Project";
-        RealmConfiguration config = new RealmConfiguration.Builder().name(realmName).allowWritesOnUiThread(true).build();
-        uiThreadRealm = Realm.getInstance(config);
+
 
 
         // Init
@@ -135,12 +152,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 Log.d("TAG", "save button pressed");
-                RealmResults<DateTimeCalorie> results = uiThreadRealm.where(DateTimeCalorie.class).findAll();
-                entries.clear();
-                for (DateTimeCalorie dateTimeCalorie : results) {
-                    entries.add(dateTimeCalorie);
-                    Log.d("TAG", "Task: " + dateTimeCalorie.toString());
-                }
+
 
                 try {
                     DateTimeCalorie Task = new DateTimeCalorie(1200.0);
