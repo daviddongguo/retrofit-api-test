@@ -44,4 +44,14 @@
         tools:layout_editor_absoluteX="164dp"
         tools:layout_editor_absoluteY="490dp" />
 
+
+    <com.anychart.AnyChartView
+        android:id="@+id/any_chart_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        />
+
+
+
+
 </LinearLayout>
