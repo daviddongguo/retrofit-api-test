@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">retrofit</string>
+    <string name="calculate_calorie">Calculate Calorie</string>
 </resources>

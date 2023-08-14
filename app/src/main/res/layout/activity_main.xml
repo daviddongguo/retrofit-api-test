@@ -11,56 +11,18 @@
         android:id="@+id/edit_text_food_query"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:ems="10"
         android:inputType="text"
-        android:text="food query string" />
+        android:lines="3"
+        android:text="enter food, like 1 egg, 2 bandwidthes" />
 
 
     <Button
-        android:id="@+id/button"
+        android:id="@+id/button_calculate"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Search"
+        android:text="@string/calculate_calorie"
         tools:layout_editor_absoluteX="160dp"
         tools:layout_editor_absoluteY="341dp" />
-    <Button
-        android:id="@+id/dateButton"
-        android:onClick="popDatePicker"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Select Date"
-        android:textSize="30sp"
-        android:width="300dp"
-        android:height="100dp" />
-    <Button
-        android:id="@+id/timeButton"
-        android:onClick="popTimePicker"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Select Time"
-        android:textSize="30sp"
-        android:width="300dp"
-        android:height="100dp" />
-
-
-
-
-    <EditText
-        android:id="@+id/edit_text_calorie"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:ems="10"
-        android:inputType="text"
-        android:text="intake calore" />
-
-    <Button
-        android:id="@+id/button_save"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Save"
-        tools:layout_editor_absoluteX="160dp"
-        tools:layout_editor_absoluteY="341dp" />
-
 
     <TextView
         android:id="@+id/textView_result"
@@ -70,6 +32,56 @@
         tools:layout_editor_absoluteX="164dp"
         tools:layout_editor_absoluteY="490dp" />
 
+
+    <Button
+        android:id="@+id/dateButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="popDatePicker"
+        android:text="Select Date"
+        android:textSize="24.sp" />
+
+    <Button
+        android:id="@+id/timeButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="popTimePicker"
+        android:text="Select Time"
+        android:textSize="24.sp" />
+
+
+    <SeekBar
+        android:id="@+id/numberSlider"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:max="100"
+        android:progress="15" />
+
+    <TextView
+        android:id="@+id/sliderValueText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_marginTop="8dp"
+        android:text="300"
+    android:textSize="36.sp" />
+
+    <Button
+        android:id="@+id/button_save"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Save"
+        tools:layout_editor_absoluteX="160dp"
+        tools:layout_editor_absoluteY="341dp" />
+
+    <Button
+        android:id="@+id/button_refresh"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Refresh"
+        tools:layout_editor_absoluteX="160dp"
+        tools:layout_editor_absoluteY="341dp" />
 
     <com.anychart.AnyChartView
         android:id="@+id/any_chart_view"

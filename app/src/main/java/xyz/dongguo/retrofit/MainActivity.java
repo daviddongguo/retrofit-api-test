@@ -8,6 +8,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.DatePicker;
 import android.widget.EditText;
+import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.TimePicker;
 
@@ -25,7 +26,6 @@ import com.anychart.enums.Orientation;
 import com.anychart.enums.ScaleStackMode;
 import com.anychart.scales.Linear;
 
-import java.lang.reflect.Array;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -50,21 +50,26 @@ import xyz.dongguo.retrofit.model.Ingredient;
 
 public class MainActivity extends AppCompatActivity {
 
-    Realm uiThreadRealm;
 
-    List<DateTimeCalorie> entries = new ArrayList<DateTimeCalorie>();
+    // Realm
+    Realm uiThreadLocalRealm;
 
-
+    // Calorie API
     APIInterface apiInterface;
-    TextView responseText;
-    EditText foodQueryEditText;
-    EditText intakeCalorieEditText;
-    Button searchButton;
-    Button saveButton;
     String serverUrl = "https://api.calorieninjas.com/";
 
+    // Calculate Calorie UI
+    EditText foodQueryEditText;
+    TextView responseText;
+    Button calculateButton;
+
+    // Save Calculate UI
     Button dateButton;
     Button timeButton;
+    SeekBar intakeCaloriesSeekBar;
+    TextView intakeCaloriesTextView;
+    Button saveButton;
+    Button refreshButton;
 
     Calendar calendar = Calendar.getInstance();
     int year = calendar.get(Calendar.YEAR);
@@ -82,8 +87,47 @@ public class MainActivity extends AppCompatActivity {
         Realm.init(this); // context, usually an Activity or Application
         String realmName = "My Project";
         RealmConfiguration config = new RealmConfiguration.Builder().name(realmName).allowWritesOnUiThread(true).build();
-        uiThreadRealm = Realm.getInstance(config);
-        Log.i("Realm", uiThreadRealm.getPath());
+        uiThreadLocalRealm = Realm.getInstance(config);
+
+
+        // init UI
+        initUI();
+        // Init
+        apiInterface = APIClient.getClient(serverUrl).create(APIInterface.class);
+
+        foodQueryEditText = findViewById(R.id.edit_text_food_query);
+        responseText = findViewById(R.id.textView_result);
+        calculateButton = findViewById(R.id.button_calculate);
+
+        dateButton = findViewById(R.id.dateButton);
+        timeButton = findViewById(R.id.timeButton);
+        intakeCaloriesSeekBar = findViewById(R.id.numberSlider);
+        intakeCaloriesTextView = findViewById(R.id.sliderValueText);
+        saveButton = findViewById(R.id.button_save);
+        refreshButton = findViewById(R.id.button_refresh);
+
+
+        intakeCaloriesSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                // Update the TextView with the current progress value
+                intakeCaloriesTextView.setText((progress *  20) + "");
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+                // This method is called when the user starts interacting with the slider
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                // This method is called when the user stops interacting with the slider
+            }
+        });
+
+        refreshGraph();
+
+
         SimpleDateFormat dateFormat = new SimpleDateFormat("MMM d", Locale.US);
         List<DataEntry> data = new ArrayList<>();
         try {
@@ -94,7 +138,7 @@ public class MainActivity extends AppCompatActivity {
             long sevenDaysAgoMillis = currentTimeMillis - (7 * 24 * 60 * 60 * 1000);
 
             // Filter and sort the results to get the latest 7 days of data
-            RealmResults<DateTimeCalorie> results = uiThreadRealm
+            RealmResults<DateTimeCalorie> results = uiThreadLocalRealm
                     .where(DateTimeCalorie.class)
                     .greaterThanOrEqualTo("dateTime", new Date(sevenDaysAgoMillis))
                     .lessThanOrEqualTo("dateTime", new Date())
@@ -114,8 +158,6 @@ public class MainActivity extends AppCompatActivity {
                 groupedResults.get(dateString).add(dateTimeCalorie);
             }
 
-            entries.clear();
-//            dataEntry = new CustomDataEntry(dateFormat.format(dateString), 0, 20, 0, dateTimeCalorie.getCalories());
             for (Map.Entry<String, List<DateTimeCalorie>> entry : groupedResults.entrySet()) {
                 String dayString = entry.getKey();
                 List<DateTimeCalorie> dayData = entry.getValue();
@@ -154,13 +196,9 @@ public class MainActivity extends AppCompatActivity {
 
         // chart
         AnyChartView anyChartView = findViewById(R.id.any_chart_view);
-
         Cartesian cartesian = AnyChart.cartesian();
-
         cartesian.animation(true);
-
         cartesian.title("Combination of Stacked Column and Line Chart (Dual Y-Axis)");
-
         cartesian.yScale().stackMode(ScaleStackMode.VALUE);
 
         Linear scalesLinear = Linear.instantiate();
@@ -174,19 +212,6 @@ public class MainActivity extends AppCompatActivity {
         extraYAxis.labels()
                 .padding(0d, 0d, 0d, 5d)
                 .format("{%Value}%");
-
-//        List<DataEntry> data = new ArrayList<>();
-//        data.add(new CustomDataEntry("Aug 17", 73.2, 2026, 1006, 1806));
-//        data.add(new CustomDataEntry("Aug 18", 50.1, 2341, 921, 1621));
-//        data.add(new CustomDataEntry("Aug 19", 70.0, 1800, 1500, 1700));
-//        data.add(new CustomDataEntry("Aug 6", 60.7, 1507, 1007, 1907));
-//        data.add(new CustomDataEntry("Aug 7", 62.1, 2701, 921, 1821));
-//        data.add(new CustomDataEntry("Aug 8", 75.1, 1671, 971, 1671));
-//        data.add(new CustomDataEntry("Aug 9", 80.0, 1980, 1080, 1880));
-//        data.add(new CustomDataEntry("Aug 10", 54.1, 1041, 1041, 1641));
-//        data.add(new CustomDataEntry("Aug 11", 51.3, 813, 1113, 1913));
-//        data.add(new CustomDataEntry("Aug 12", 59.1, 691, 1091, 1691));
-//        data.add(new CustomDataEntry("Aug 15", 96.5, 2040, 1200, 1600));
 
         Set set = Set.instantiate();
         set.data(data);
@@ -210,17 +235,7 @@ public class MainActivity extends AppCompatActivity {
         // end of char
 
 
-        // Init
-        apiInterface = APIClient.getClient(serverUrl).create(APIInterface.class);
-        responseText = findViewById(R.id.textView_result);
-        foodQueryEditText = findViewById(R.id.edit_text_food_query);
-        searchButton = findViewById(R.id.button);
-        saveButton = findViewById(R.id.button_save);
-        intakeCalorieEditText = findViewById(R.id.edit_text_calorie);
 
-        // Init date and time
-        dateButton = findViewById(R.id.dateButton);
-        timeButton = findViewById(R.id.timeButton);
 
 
         saveButton.setOnClickListener(new View.OnClickListener() {
@@ -231,11 +246,11 @@ public class MainActivity extends AppCompatActivity {
                 try {
                     calendar.set(year, month, dayOfMonth, hour, minute, 0);
                     Date dateTime = calendar.getTime();
-                    Log.d("SAVE calories", intakeCalorieEditText.getText().toString());
-                    Double calories = Double.parseDouble(intakeCalorieEditText.getText().toString());
+                    Log.d("SAVE calories", intakeCaloriesTextView.getText().toString());
+                    Double calories = Double.parseDouble(intakeCaloriesTextView.getText().toString());
                     DateTimeCalorie dateTimeCalorie = new DateTimeCalorie(dateTime, calories);
                     Log.d("SAVE calories", dateTimeCalorie.toString());
-                    uiThreadRealm.executeTransaction(transactionRealm -> {
+                    uiThreadLocalRealm.executeTransaction(transactionRealm -> {
                         transactionRealm.insert(dateTimeCalorie);
                     });
 
@@ -247,7 +262,7 @@ public class MainActivity extends AppCompatActivity {
 
 
         // Button click
-        searchButton.setOnClickListener(new View.OnClickListener() {
+        calculateButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 String apiKey = getResources().getString(R.string.apikey);
@@ -279,6 +294,13 @@ public class MainActivity extends AppCompatActivity {
 
 
     }// end of onCreate
+
+    private void initUI() {
+    }
+
+    private void refreshGraph() {
+
+    }
 
     public void popDatePicker(View view) {
         // Show a DatePickerDialog
