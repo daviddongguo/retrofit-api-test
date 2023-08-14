@@ -1,11 +1,15 @@
 package xyz.dongguo.retrofit;
 
+import android.app.DatePickerDialog;
+import android.app.TimePickerDialog;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.DatePicker;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.TimePicker;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -23,6 +27,7 @@ import com.anychart.scales.Linear;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
 
@@ -52,6 +57,15 @@ public class MainActivity extends AppCompatActivity {
     Button saveButton;
     String serverUrl = "https://api.calorieninjas.com/";
 
+    private DatePicker datePicker;
+    private TimePicker timePicker;
+    Calendar calendar = Calendar.getInstance();
+    int year = calendar.get(Calendar.YEAR);
+    int month = calendar.get(Calendar.MONTH);
+    int day = calendar.get(Calendar.DAY_OF_MONTH);
+    int hour = calendar.get(Calendar.HOUR);
+    int minute = calendar.get(Calendar.MINUTE);
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -62,13 +76,14 @@ public class MainActivity extends AppCompatActivity {
         String realmName = "My Project";
         RealmConfiguration config = new RealmConfiguration.Builder().name(realmName).allowWritesOnUiThread(true).build();
         uiThreadRealm = Realm.getInstance(config);
+        Log.i("Realm", uiThreadRealm.getPath());
         SimpleDateFormat dateFormat = new SimpleDateFormat("MMM d", Locale.US);
         List<DataEntry> data = new ArrayList<>();
         try {
             RealmResults<DateTimeCalorie> results = uiThreadRealm.where(DateTimeCalorie.class).findAll();
             entries.clear();
             for (DateTimeCalorie dateTimeCalorie : results) {
-                Log.d("TAG", "Task: " );
+                Log.d("TAG", "Task: ");
                 Log.d("TAG", "Task: " + dateTimeCalorie.getDateTime() + dateTimeCalorie.getCalories().toString());
                 data.add(new CustomDataEntry(dateFormat.format(dateTimeCalorie.getDateTime()), 50, 250, 500, dateTimeCalorie.getCalories()));
             }
@@ -136,17 +151,37 @@ public class MainActivity extends AppCompatActivity {
         // end of char
 
 
-
-
         // Init
         apiInterface = APIClient.getClient(serverUrl).create(APIInterface.class);
-        responseText = (TextView) findViewById(R.id.textView_result);
+        responseText = findViewById(R.id.textView_result);
         foodQueryEditText = findViewById(R.id.edit_text_food_query);
         searchButton = findViewById(R.id.button);
         saveButton = findViewById(R.id.button_save);
 
 
-        Realm.init(this); // context, usually an Activity or Application
+        // Init date and time
+        datePicker = findViewById(R.id.datePicker);
+        timePicker = findViewById(R.id.timePicker);
+        // Set the current date as the initial selected date
+
+        datePicker.init(year, month, day, null);
+
+        // Set a click listener to show a DatePickerDialog when the date is clicked
+        datePicker.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showDatePickerDialog();
+            }
+        });
+
+
+        // Set a click listener to show a TimePickerDialog when the time is clicked
+        timePicker.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showTimePickerDialog();
+            }
+        });
 
         saveButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -198,7 +233,36 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+
     }// end of onCreate
+    private void showDatePickerDialog () {
+        // Show a DatePickerDialog
+        DatePickerDialog datePickerDialog = new DatePickerDialog(
+                this,
+                new DatePickerDialog.OnDateSetListener() {
+                    @Override
+                    public void onDateSet(DatePicker view, int year, int monthOfYear, int dayOfMonth) {
+                        // Handle the selected date
+                    }
+                },
+                year, month, day // Initial values
+        );
+        datePickerDialog.show();
+    }
+    private void showTimePickerDialog () {
+        // Show a TimePickerDialog
+        TimePickerDialog timePickerDialog = new TimePickerDialog(
+                this,
+                new TimePickerDialog.OnTimeSetListener() {
+                    @Override
+                    public void onTimeSet(TimePicker view, int hourOfDay, int minute) {
+                        // Handle the selected time
+                    }
+                },
+                hour, minute, false // Initial values
+        );
+        timePickerDialog.show();
+    }
 
     private class CustomDataEntry extends ValueDataEntry {
         CustomDataEntry(String x, Number value, Number value2, Number value3, Number value4) {
@@ -208,6 +272,5 @@ public class MainActivity extends AppCompatActivity {
             setValue("value4", value4);
         }
     } // end of dataentry class
-
 
 }
