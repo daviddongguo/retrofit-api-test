@@ -26,6 +26,14 @@
         tools:layout_editor_absoluteX="160dp"
         tools:layout_editor_absoluteY="341dp" />
 
+    <Button
+        android:id="@+id/button_save"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Save"
+        tools:layout_editor_absoluteX="160dp"
+        tools:layout_editor_absoluteY="341dp" />
+
 
 
     <TextView

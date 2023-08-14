@@ -1,6 +1,7 @@
 package xyz.dongguo.retrofit.model;
 
 import java.util.Date;
+import java.util.UUID;
 
 import io.realm.RealmObject;
 import io.realm.annotations.PrimaryKey;
@@ -8,7 +9,7 @@ import io.realm.annotations.Required;
 
 public class DateTimeCalorie extends RealmObject {
     @PrimaryKey
-    private String _id;
+    private String _id = UUID.randomUUID().toString();
 
     @Required
     private Date dateTime = new Date();
@@ -20,8 +21,14 @@ public class DateTimeCalorie extends RealmObject {
 
     private String ownerId = "a-string-represtening-user";
 
-    public DateTimeCalorie() {}
+    public DateTimeCalorie() {
+    }
 
+
+    public DateTimeCalorie(Double calories) {
+        this.dateTime = new Date();
+        this.calories = calories;
+    }
     public DateTimeCalorie(Date dateTime, Double calories) {
         this.dateTime = dateTime;
         this.calories = calories;
@@ -72,4 +79,8 @@ public class DateTimeCalorie extends RealmObject {
     public void setOwnerId(String ownerId) {
         this.ownerId = ownerId;
     }
+
+
+
+
 }

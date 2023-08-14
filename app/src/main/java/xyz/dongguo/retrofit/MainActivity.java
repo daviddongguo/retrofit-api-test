@@ -9,20 +9,32 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import java.util.concurrent.FutureTask;
+
+import io.realm.Realm;
+import io.realm.RealmConfiguration;
+import io.realm.RealmResults;
+import io.realm.mongodb.App;
+import io.realm.mongodb.AppConfiguration;
+import io.realm.mongodb.sync.SyncConfiguration;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 import xyz.dongguo.retrofit.model.APIClient;
 import xyz.dongguo.retrofit.model.APIInterface;
 import xyz.dongguo.retrofit.model.CalorieResults;
+import xyz.dongguo.retrofit.model.DateTimeCalorie;
 import xyz.dongguo.retrofit.model.Ingredient;
 
 public class MainActivity extends AppCompatActivity {
+
+    Realm uiThreadRealm;
 
     APIInterface apiInterface;
     TextView responseText;
     EditText foodQueryEditText;
     Button searchButton;
+    Button saveButton;
     String serverUrl = "https://api.calorieninjas.com/";
 
     @Override
@@ -31,11 +43,43 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
 
+        // init Realm
+        Realm.init(this); // context, usually an Activity or Application
+        String realmName = "My Project";
+        RealmConfiguration config = new RealmConfiguration.Builder().name(realmName).allowWritesOnUiThread(true).build();
+        uiThreadRealm = Realm.getInstance(config);
+
+
         // Init
         apiInterface = APIClient.getClient(serverUrl).create(APIInterface.class);
         responseText = (TextView) findViewById(R.id.textView_result);
         foodQueryEditText = findViewById(R.id.edit_text_food_query);
         searchButton = findViewById(R.id.button);
+        saveButton = findViewById(R.id.button_save);
+
+
+        Realm.init(this); // context, usually an Activity or Application
+
+        saveButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Log.d("TAG", "save button pressed");
+                RealmResults<DateTimeCalorie> results = uiThreadRealm.where(DateTimeCalorie.class).findAll();
+                for (DateTimeCalorie task : results) {
+                    Log.d("TAG", "Task: " + task.toString());
+                }
+
+                try {
+                    DateTimeCalorie Task = new DateTimeCalorie(1200.0);
+                    uiThreadRealm.executeTransaction (transactionRealm -> {
+                        transactionRealm.insert(Task);
+                    });
+                }catch (Exception ex) {
+                    Log.d("ERROR", ex.toString());
+                }
+
+            }
+        });
 
 
         // Button click
@@ -68,8 +112,8 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-
-
-
     }
+
+
+
 }
