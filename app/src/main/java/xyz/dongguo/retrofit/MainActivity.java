@@ -9,6 +9,9 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 import java.util.concurrent.FutureTask;
 
 import io.realm.Realm;
@@ -29,6 +32,7 @@ import xyz.dongguo.retrofit.model.Ingredient;
 public class MainActivity extends AppCompatActivity {
 
     Realm uiThreadRealm;
+    List<DateTimeCalorie> entries = new ArrayList<DateTimeCalorie>();
 
     APIInterface apiInterface;
     TextView responseText;
@@ -65,8 +69,10 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 Log.d("TAG", "save button pressed");
                 RealmResults<DateTimeCalorie> results = uiThreadRealm.where(DateTimeCalorie.class).findAll();
-                for (DateTimeCalorie task : results) {
-                    Log.d("TAG", "Task: " + task.toString());
+                entries.clear();
+                for (DateTimeCalorie dateTimeCalorie : results) {
+                    entries.add(dateTimeCalorie);
+                    Log.d("TAG", "Task: " + dateTimeCalorie.toString());
                 }
 
                 try {
@@ -88,6 +94,7 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 String apiKey = getResources().getString(R.string.apikey);
                 String queryString = foodQueryEditText.getText().toString();
+                queryString = "1 egg, 2 eggs, 3 sandwiches";
                 Call<CalorieResults> call = apiInterface.doSearchIngredient(apiKey, queryString);
 
                 call.enqueue(new Callback<CalorieResults>() {
