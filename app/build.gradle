@@ -1,6 +1,7 @@
 plugins {
     id 'com.android.application'
 }
+apply plugin: 'realm-android'
 
 android {
     namespace 'xyz.dongguo.retrofit'
@@ -12,6 +13,7 @@ android {
     defaultConfig {
 
         resValue "string", "apikey", properties.getProperty("ninjas.apiKey", "")
+        resValue "string", "appId", properties.getProperty("appId", "")
 
         applicationId "xyz.dongguo.retrofit"
         minSdk 24
@@ -23,14 +25,21 @@ android {
     }
 
     buildTypes {
+
+
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
+
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    realm {
+        syncEnabled = true
     }
 }
 
