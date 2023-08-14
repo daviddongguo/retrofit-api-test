@@ -58,6 +58,7 @@ public class MainActivity extends AppCompatActivity {
     APIInterface apiInterface;
     TextView responseText;
     EditText foodQueryEditText;
+    EditText intakeCalorieEditText;
     Button searchButton;
     Button saveButton;
     String serverUrl = "https://api.calorieninjas.com/";
@@ -215,7 +216,7 @@ public class MainActivity extends AppCompatActivity {
         foodQueryEditText = findViewById(R.id.edit_text_food_query);
         searchButton = findViewById(R.id.button);
         saveButton = findViewById(R.id.button_save);
-
+        intakeCalorieEditText = findViewById(R.id.edit_text_calorie);
 
         // Init date and time
         dateButton = findViewById(R.id.dateButton);
@@ -230,10 +231,14 @@ public class MainActivity extends AppCompatActivity {
                 try {
                     calendar.set(year, month, dayOfMonth, hour, minute, 0);
                     Date dateTime = calendar.getTime();
-                    DateTimeCalorie dateTimeCalorie = new DateTimeCalorie(dateTime, 1200.0);
+                    Log.d("SAVE calories", intakeCalorieEditText.getText().toString());
+                    Double calories = Double.parseDouble(intakeCalorieEditText.getText().toString());
+                    DateTimeCalorie dateTimeCalorie = new DateTimeCalorie(dateTime, calories);
+                    Log.d("SAVE calories", dateTimeCalorie.toString());
                     uiThreadRealm.executeTransaction(transactionRealm -> {
                         transactionRealm.insert(dateTimeCalorie);
                     });
+
                 } catch (Exception ex) {
                     Log.d("ERROR", ex.toString());
                 }
