@@ -25,15 +25,20 @@ import com.anychart.enums.Orientation;
 import com.anychart.enums.ScaleStackMode;
 import com.anychart.scales.Linear;
 
+import java.lang.reflect.Array;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import io.realm.Realm;
 import io.realm.RealmConfiguration;
 import io.realm.RealmResults;
+import io.realm.Sort;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -57,12 +62,13 @@ public class MainActivity extends AppCompatActivity {
     Button saveButton;
     String serverUrl = "https://api.calorieninjas.com/";
 
-    private DatePicker datePicker;
-    private TimePicker timePicker;
+    Button dateButton;
+    Button timeButton;
+
     Calendar calendar = Calendar.getInstance();
     int year = calendar.get(Calendar.YEAR);
     int month = calendar.get(Calendar.MONTH);
-    int day = calendar.get(Calendar.DAY_OF_MONTH);
+    int dayOfMonth = calendar.get(Calendar.DAY_OF_MONTH);
     int hour = calendar.get(Calendar.HOUR);
     int minute = calendar.get(Calendar.MINUTE);
 
@@ -80,12 +86,66 @@ public class MainActivity extends AppCompatActivity {
         SimpleDateFormat dateFormat = new SimpleDateFormat("MMM d", Locale.US);
         List<DataEntry> data = new ArrayList<>();
         try {
-            RealmResults<DateTimeCalorie> results = uiThreadRealm.where(DateTimeCalorie.class).findAll();
-            entries.clear();
+            // Get the current date
+            long currentTimeMillis = System.currentTimeMillis();
+
+            // Calculate the timestamp for 7 days ago
+            long sevenDaysAgoMillis = currentTimeMillis - (7 * 24 * 60 * 60 * 1000);
+
+            // Filter and sort the results to get the latest 7 days of data
+            RealmResults<DateTimeCalorie> results = uiThreadRealm
+                    .where(DateTimeCalorie.class)
+                    .greaterThanOrEqualTo("dateTime", new Date(sevenDaysAgoMillis))
+                    .lessThanOrEqualTo("dateTime", new Date())
+                    .findAll()
+                    .sort("dateTime", Sort.ASCENDING);
+
+            // Group results by day
+            Map<String, List<DateTimeCalorie>> groupedResults = new HashMap<>();
+
             for (DateTimeCalorie dateTimeCalorie : results) {
-                Log.d("TAG", "Task: ");
-                Log.d("TAG", "Task: " + dateTimeCalorie.getDateTime() + dateTimeCalorie.getCalories().toString());
-                data.add(new CustomDataEntry(dateFormat.format(dateTimeCalorie.getDateTime()), 50, 250, 500, dateTimeCalorie.getCalories()));
+                String dateString = dateFormat.format(dateTimeCalorie.getDateTime());
+
+                if (!groupedResults.containsKey(dateString)) {
+                    groupedResults.put(dateString, new ArrayList<>());
+                }
+
+                groupedResults.get(dateString).add(dateTimeCalorie);
+            }
+
+            entries.clear();
+//            dataEntry = new CustomDataEntry(dateFormat.format(dateString), 0, 20, 0, dateTimeCalorie.getCalories());
+            for (Map.Entry<String, List<DateTimeCalorie>> entry : groupedResults.entrySet()) {
+                String dayString = entry.getKey();
+                List<DateTimeCalorie> dayData = entry.getValue();
+
+                // Process the data for the current day
+                Log.d("Day: ", dayString); // Print the day's timestamp
+
+                int count = 0; // Counter for processed items
+                Double[] calories = {0.0, 0.0, 0.0};
+                for (DateTimeCalorie dateTimeCalorie : dayData) {
+                    if (count < 3) { // Process only the first 3 items
+                        Log.d("DateTime: ", dateTimeCalorie.getDateTime() + ", Calories: " + dateTimeCalorie.getCalories());
+                        calories[count] = dateTimeCalorie.getCalories();
+                        // You can add more processing logic here
+                        count++;
+                    } else {
+                        data.add(new CustomDataEntry(dayString, 50, calories[0], calories[1],calories[2]));
+                        break; // Exit the loop once the first 3 items are processed
+                    }
+                }
+
+                // If there are less than 3 items, fill remaining calories with 0.0
+                while (count < 3) {
+                    calories[count] = 0.0;
+                    count++;
+                }
+
+                // Add the data entry to the data list
+                data.add(new CustomDataEntry(dayString, 50, calories[0], calories[1], calories[2]));
+
+
             }
         } catch (Exception ex) {
             Log.d("Error", ex.toString());
@@ -115,11 +175,9 @@ public class MainActivity extends AppCompatActivity {
                 .format("{%Value}%");
 
 //        List<DataEntry> data = new ArrayList<>();
-        data.add(new CustomDataEntry("Aug 15", 96.5, 2040, 1200, 1600));
-        data.add(new CustomDataEntry("Aug 16", 50.1, 1794, 1124, 1724));
-        data.add(new CustomDataEntry("Aug 17", 73.2, 2026, 1006, 1806));
-        data.add(new CustomDataEntry("Aug 18", 50.1, 2341, 921, 1621));
-        data.add(new CustomDataEntry("Aug 19", 70.0, 1800, 1500, 1700));
+//        data.add(new CustomDataEntry("Aug 17", 73.2, 2026, 1006, 1806));
+//        data.add(new CustomDataEntry("Aug 18", 50.1, 2341, 921, 1621));
+//        data.add(new CustomDataEntry("Aug 19", 70.0, 1800, 1500, 1700));
 //        data.add(new CustomDataEntry("Aug 6", 60.7, 1507, 1007, 1907));
 //        data.add(new CustomDataEntry("Aug 7", 62.1, 2701, 921, 1821));
 //        data.add(new CustomDataEntry("Aug 8", 75.1, 1671, 971, 1671));
@@ -160,44 +218,25 @@ public class MainActivity extends AppCompatActivity {
 
 
         // Init date and time
-        datePicker = findViewById(R.id.datePicker);
-        timePicker = findViewById(R.id.timePicker);
-        // Set the current date as the initial selected date
+        dateButton = findViewById(R.id.dateButton);
+        timeButton = findViewById(R.id.timeButton);
 
-        datePicker.init(year, month, day, null);
-
-        // Set a click listener to show a DatePickerDialog when the date is clicked
-        datePicker.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showDatePickerDialog();
-            }
-        });
-
-
-        // Set a click listener to show a TimePickerDialog when the time is clicked
-        timePicker.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showTimePickerDialog();
-            }
-        });
 
         saveButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Log.d("TAG", "save button pressed");
 
-
                 try {
-                    DateTimeCalorie Task = new DateTimeCalorie(1200.0);
+                    calendar.set(year, month, dayOfMonth, hour, minute, 0);
+                    Date dateTime = calendar.getTime();
+                    DateTimeCalorie dateTimeCalorie = new DateTimeCalorie(dateTime, 1200.0);
                     uiThreadRealm.executeTransaction(transactionRealm -> {
-                        transactionRealm.insert(Task);
+                        transactionRealm.insert(dateTimeCalorie);
                     });
                 } catch (Exception ex) {
                     Log.d("ERROR", ex.toString());
                 }
-
             }
         });
 
@@ -235,34 +274,45 @@ public class MainActivity extends AppCompatActivity {
 
 
     }// end of onCreate
-    private void showDatePickerDialog () {
+
+    public void popDatePicker(View view) {
         // Show a DatePickerDialog
-        DatePickerDialog datePickerDialog = new DatePickerDialog(
-                this,
-                new DatePickerDialog.OnDateSetListener() {
-                    @Override
-                    public void onDateSet(DatePicker view, int year, int monthOfYear, int dayOfMonth) {
-                        // Handle the selected date
-                    }
-                },
-                year, month, day // Initial values
-        );
+        DatePickerDialog.OnDateSetListener onDateSetListener = new DatePickerDialog.OnDateSetListener() {
+            @Override
+            public void onDateSet(DatePicker view, int selectedYear, int selectedMonth, int selectedDayOfMonth) {
+                year = selectedYear;
+                month = selectedMonth;
+                dayOfMonth = selectedDayOfMonth;
+                dateButton.setText(String.format(Locale.getDefault(), "%04d-%02d-%02d", year, month, dayOfMonth));
+            }
+        };
+
+        // int style = AlertDialog.THEME_HOLO_DARK;
+
+        DatePickerDialog datePickerDialog = new DatePickerDialog(this, /*style,*/ onDateSetListener, year, month, dayOfMonth);
+
+        datePickerDialog.setTitle("Select Date");
         datePickerDialog.show();
     }
-    private void showTimePickerDialog () {
-        // Show a TimePickerDialog
-        TimePickerDialog timePickerDialog = new TimePickerDialog(
-                this,
-                new TimePickerDialog.OnTimeSetListener() {
-                    @Override
-                    public void onTimeSet(TimePicker view, int hourOfDay, int minute) {
-                        // Handle the selected time
-                    }
-                },
-                hour, minute, false // Initial values
-        );
+
+    public void popTimePicker(View view) {
+        TimePickerDialog.OnTimeSetListener onTimeSetListener = new TimePickerDialog.OnTimeSetListener() {
+            @Override
+            public void onTimeSet(TimePicker timePicker, int selectedHour, int selectedMinute) {
+                hour = selectedHour;
+                minute = selectedMinute;
+                timeButton.setText(String.format(Locale.getDefault(), "%02d:%02d", hour, minute));
+            }
+        };
+
+        // int style = AlertDialog.THEME_HOLO_DARK;
+
+        TimePickerDialog timePickerDialog = new TimePickerDialog(this, /*style,*/ onTimeSetListener, hour, minute, true);
+
+        timePickerDialog.setTitle("Select Time");
         timePickerDialog.show();
     }
+
 
     private class CustomDataEntry extends ValueDataEntry {
         CustomDataEntry(String x, Number value, Number value2, Number value3, Number value4) {
