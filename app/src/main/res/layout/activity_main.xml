@@ -65,7 +65,7 @@
         android:layout_gravity="center"
         android:layout_marginTop="8dp"
         android:text="300"
-    android:textSize="36.sp" />
+        android:textSize="36.sp" />
 
     <Button
         android:id="@+id/button_save"
@@ -87,6 +87,5 @@
         android:id="@+id/any_chart_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
-
 
 </LinearLayout>

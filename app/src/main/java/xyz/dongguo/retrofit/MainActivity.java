@@ -6,11 +6,9 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
-import android.widget.DatePicker;
 import android.widget.EditText;
 import android.widget.SeekBar;
 import android.widget.TextView;
-import android.widget.TimePicker;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -29,11 +27,14 @@ import com.anychart.scales.Linear;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.TreeMap;
 
 import io.realm.Realm;
 import io.realm.RealmConfiguration;
@@ -50,6 +51,13 @@ import xyz.dongguo.retrofit.model.Ingredient;
 
 public class MainActivity extends AppCompatActivity {
 
+    
+    // Constant Variables
+    String REALM_PROJECT_NAME = "My Project";
+    double BASE_INTAKE_CALORIES_DAILY = 2400.0;
+    int BASE_STEP_CALORIES = 20;
+    long SEVEN_DAYS_AGO_MILLIS = 7 * 24 * 60 * 60 * 1000;
+    SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("MMM d", Locale.US);
 
     // Realm
     Realm uiThreadLocalRealm;
@@ -78,6 +86,8 @@ public class MainActivity extends AppCompatActivity {
     int hour = calendar.get(Calendar.HOUR);
     int minute = calendar.get(Calendar.MINUTE);
 
+    AnyChartView anyChartView;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -85,33 +95,22 @@ public class MainActivity extends AppCompatActivity {
 
         // init Realm
         Realm.init(this); // context, usually an Activity or Application
-        String realmName = "My Project";
-        RealmConfiguration config = new RealmConfiguration.Builder().name(realmName).allowWritesOnUiThread(true).build();
+        RealmConfiguration config = new RealmConfiguration.Builder().name(REALM_PROJECT_NAME).allowWritesOnUiThread(true).build();
         uiThreadLocalRealm = Realm.getInstance(config);
 
+        // init api interface
+        apiInterface = APIClient.getClient(serverUrl).create(APIInterface.class);
 
         // init UI
         initUI();
-        // Init
-        apiInterface = APIClient.getClient(serverUrl).create(APIInterface.class);
+        refreshGraph();
 
-        foodQueryEditText = findViewById(R.id.edit_text_food_query);
-        responseText = findViewById(R.id.textView_result);
-        calculateButton = findViewById(R.id.button_calculate);
-
-        dateButton = findViewById(R.id.dateButton);
-        timeButton = findViewById(R.id.timeButton);
-        intakeCaloriesSeekBar = findViewById(R.id.numberSlider);
-        intakeCaloriesTextView = findViewById(R.id.sliderValueText);
-        saveButton = findViewById(R.id.button_save);
-        refreshButton = findViewById(R.id.button_refresh);
-
-
+        // set number seekBar for Intake Calories
         intakeCaloriesSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 // Update the TextView with the current progress value
-                intakeCaloriesTextView.setText((progress *  20) + "");
+                intakeCaloriesTextView.setText(String.format(Locale.US, "%d", progress * BASE_STEP_CALORIES));
             }
 
             @Override
@@ -125,18 +124,72 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        refreshGraph();
+        // save calorie Button
+        saveButton.setOnClickListener(v -> {
+            try {
+                calendar.set(year, month, dayOfMonth, hour, minute, 0);
+                Date dateTime = calendar.getTime();
+                Double calories = Double.parseDouble(intakeCaloriesTextView.getText().toString());
+                DateTimeCalorie dateTimeCalorie = new DateTimeCalorie(dateTime, calories);
+                uiThreadLocalRealm.executeTransaction(transactionRealm -> transactionRealm.insert(dateTimeCalorie));
+            } catch (Exception ex) {
+                Log.d("ERROR", ex.toString());
+            }
+        });
 
 
-        SimpleDateFormat dateFormat = new SimpleDateFormat("MMM d", Locale.US);
-        List<DataEntry> data = new ArrayList<>();
+        // calculate calorie Button
+        calculateButton.setOnClickListener(v -> {
+            String apiKey = getResources().getString(R.string.apikey);
+            String queryString = foodQueryEditText.getText().toString();
+            Call<CalorieResults> call = apiInterface.doSearchIngredient(apiKey, queryString);
+
+            call.enqueue(new Callback<CalorieResults>() {
+                @Override
+                public void onResponse(Call<CalorieResults> call, Response<CalorieResults> response) {
+                    Log.d("TAG", response.code() + "");
+                    StringBuilder displayResponse = new StringBuilder();
+                    CalorieResults results = response.body();
+                    for (Ingredient ingredient : results.items) {
+                        displayResponse.append(ingredient.name).append(" :  ").append(ingredient.calories).append("\n");
+                    }
+
+                    responseText.setText(displayResponse.toString());
+                }
+
+                @Override
+                public void onFailure(Call<CalorieResults> call, Throwable t) {
+                    call.cancel();
+                }
+            });
+        });
+
+        // refresh graph Button
+        refreshButton.setOnClickListener(v -> refreshGraph());
+
+
+    }// end of onCreate
+
+    private void initUI() {
+        foodQueryEditText = findViewById(R.id.edit_text_food_query);
+        responseText = findViewById(R.id.textView_result);
+        calculateButton = findViewById(R.id.button_calculate);
+
+        dateButton = findViewById(R.id.dateButton);
+        timeButton = findViewById(R.id.timeButton);
+        intakeCaloriesSeekBar = findViewById(R.id.numberSlider);
+        intakeCaloriesTextView = findViewById(R.id.sliderValueText);
+        saveButton = findViewById(R.id.button_save);
+        refreshButton = findViewById(R.id.button_refresh);
+
+        anyChartView = findViewById(R.id.any_chart_view);
+    }
+
+    private void refreshGraph() {
+
+        List<DataEntry> listOfDataEntry = new ArrayList<>();
         try {
-            // Get the current date
-            long currentTimeMillis = System.currentTimeMillis();
-
-            // Calculate the timestamp for 7 days ago
-            long sevenDaysAgoMillis = currentTimeMillis - (7 * 24 * 60 * 60 * 1000);
-
+            long sevenDaysAgoMillis = System.currentTimeMillis() - SEVEN_DAYS_AGO_MILLIS;
             // Filter and sort the results to get the latest 7 days of data
             RealmResults<DateTimeCalorie> results = uiThreadLocalRealm
                     .where(DateTimeCalorie.class)
@@ -149,20 +202,25 @@ public class MainActivity extends AppCompatActivity {
             Map<String, List<DateTimeCalorie>> groupedResults = new HashMap<>();
 
             for (DateTimeCalorie dateTimeCalorie : results) {
-                String dateString = dateFormat.format(dateTimeCalorie.getDateTime());
+                String dateString = DATE_FORMAT.format(dateTimeCalorie.getDateTime());
+                Log.d("TAG", dateString);
 
                 if (!groupedResults.containsKey(dateString)) {
                     groupedResults.put(dateString, new ArrayList<>());
                 }
 
-                groupedResults.get(dateString).add(dateTimeCalorie);
+                Objects.requireNonNull(groupedResults.get(dateString)).add(dateTimeCalorie);
             }
 
-            for (Map.Entry<String, List<DateTimeCalorie>> entry : groupedResults.entrySet()) {
+            // Sort the grouped results
+            Map<String, List<DateTimeCalorie>> sortedResults = new TreeMap<>(new KeyComparator());
+            sortedResults.putAll(groupedResults);
+
+
+            for (Map.Entry<String, List<DateTimeCalorie>> entry : sortedResults.entrySet()) {
                 String dayString = entry.getKey();
                 List<DateTimeCalorie> dayData = entry.getValue();
 
-                // Process the data for the current day
                 Log.d("Day: ", dayString); // Print the day's timestamp
 
                 int count = 0; // Counter for processed items
@@ -171,10 +229,10 @@ public class MainActivity extends AppCompatActivity {
                     if (count < 3) { // Process only the first 3 items
                         Log.d("DateTime: ", dateTimeCalorie.getDateTime() + ", Calories: " + dateTimeCalorie.getCalories());
                         calories[count] = dateTimeCalorie.getCalories();
-                        // You can add more processing logic here
                         count++;
-                    } else {
-                        data.add(new CustomDataEntry(dayString, 50, calories[0], calories[1],calories[2]));
+                      } else {
+                        double percentIntakeCalories = (calories[0] + calories[1] + calories[2]) / BASE_INTAKE_CALORIES_DAILY;
+                        listOfDataEntry.add(new CustomDataEntry(dayString, percentIntakeCalories, calories[2], calories[1], calories[0]));
                         break; // Exit the loop once the first 3 items are processed
                     }
                 }
@@ -186,16 +244,14 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 // Add the data entry to the data list
-                data.add(new CustomDataEntry(dayString, 50, calories[0], calories[1], calories[2]));
-
-
+                double percentIntakeCalories = (calories[0] + calories[1] + calories[2]) / BASE_INTAKE_CALORIES_DAILY * 100;
+                listOfDataEntry.add(new CustomDataEntry(dayString, percentIntakeCalories, calories[2], calories[1], calories[0]));
             }
         } catch (Exception ex) {
             Log.d("Error", ex.toString());
         }
 
         // chart
-        AnyChartView anyChartView = findViewById(R.id.any_chart_view);
         Cartesian cartesian = AnyChart.cartesian();
         cartesian.animation(true);
         cartesian.title("Combination of Stacked Column and Line Chart (Dual Y-Axis)");
@@ -214,7 +270,7 @@ public class MainActivity extends AppCompatActivity {
                 .format("{%Value}%");
 
         Set set = Set.instantiate();
-        set.data(data);
+        set.data(listOfDataEntry);
         Mapping lineData = set.mapAs("{ x: 'x', value: 'value' }");
         Mapping column1Data = set.mapAs("{ x: 'x', value: 'value2' }");
         Mapping column2Data = set.mapAs("{ x: 'x', value: 'value3' }");
@@ -235,83 +291,15 @@ public class MainActivity extends AppCompatActivity {
         // end of char
 
 
-
-
-
-        saveButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Log.d("TAG", "save button pressed");
-
-                try {
-                    calendar.set(year, month, dayOfMonth, hour, minute, 0);
-                    Date dateTime = calendar.getTime();
-                    Log.d("SAVE calories", intakeCaloriesTextView.getText().toString());
-                    Double calories = Double.parseDouble(intakeCaloriesTextView.getText().toString());
-                    DateTimeCalorie dateTimeCalorie = new DateTimeCalorie(dateTime, calories);
-                    Log.d("SAVE calories", dateTimeCalorie.toString());
-                    uiThreadLocalRealm.executeTransaction(transactionRealm -> {
-                        transactionRealm.insert(dateTimeCalorie);
-                    });
-
-                } catch (Exception ex) {
-                    Log.d("ERROR", ex.toString());
-                }
-            }
-        });
-
-
-        // Button click
-        calculateButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String apiKey = getResources().getString(R.string.apikey);
-                String queryString = foodQueryEditText.getText().toString();
-                queryString = "1 egg, 2 eggs, 3 sandwiches";
-                Call<CalorieResults> call = apiInterface.doSearchIngredient(apiKey, queryString);
-
-                call.enqueue(new Callback<CalorieResults>() {
-                    @Override
-                    public void onResponse(Call<CalorieResults> call, Response<CalorieResults> response) {
-                        Log.d("TAG", response.code() + "");
-                        String displayResponse = "";
-                        CalorieResults results = response.body();
-                        for (Ingredient ingredient : results.items) {
-                            displayResponse += ingredient.name + " :  " + ingredient.calories + "\n";
-                        }
-
-                        responseText.setText(displayResponse);
-                    }
-
-                    @Override
-                    public void onFailure(Call<CalorieResults> call, Throwable t) {
-                        responseText.setText("something error");
-                        call.cancel();
-                    }
-                });
-            }
-        });
-
-
-    }// end of onCreate
-
-    private void initUI() {
-    }
-
-    private void refreshGraph() {
-
     }
 
     public void popDatePicker(View view) {
         // Show a DatePickerDialog
-        DatePickerDialog.OnDateSetListener onDateSetListener = new DatePickerDialog.OnDateSetListener() {
-            @Override
-            public void onDateSet(DatePicker view, int selectedYear, int selectedMonth, int selectedDayOfMonth) {
-                year = selectedYear;
-                month = selectedMonth;
-                dayOfMonth = selectedDayOfMonth;
-                dateButton.setText(String.format(Locale.getDefault(), "%04d-%02d-%02d", year, month, dayOfMonth));
-            }
+        DatePickerDialog.OnDateSetListener onDateSetListener = (view1, selectedYear, selectedMonth, selectedDayOfMonth) -> {
+            year = selectedYear;
+            month = selectedMonth;
+            dayOfMonth = selectedDayOfMonth;
+            dateButton.setText(String.format(Locale.getDefault(), "%04d-%02d-%02d", year, month, dayOfMonth));
         };
 
         // int style = AlertDialog.THEME_HOLO_DARK;
@@ -323,13 +311,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void popTimePicker(View view) {
-        TimePickerDialog.OnTimeSetListener onTimeSetListener = new TimePickerDialog.OnTimeSetListener() {
-            @Override
-            public void onTimeSet(TimePicker timePicker, int selectedHour, int selectedMinute) {
-                hour = selectedHour;
-                minute = selectedMinute;
-                timeButton.setText(String.format(Locale.getDefault(), "%02d:%02d", hour, minute));
-            }
+        TimePickerDialog.OnTimeSetListener onTimeSetListener = (timePicker, selectedHour, selectedMinute) -> {
+            hour = selectedHour;
+            minute = selectedMinute;
+            timeButton.setText(String.format(Locale.getDefault(), "%02d:%02d", hour, minute));
         };
 
         // int style = AlertDialog.THEME_HOLO_DARK;
@@ -340,14 +325,20 @@ public class MainActivity extends AppCompatActivity {
         timePickerDialog.show();
     }
 
+    private static class KeyComparator implements Comparator<String> {
+        @Override
+        public int compare(String key1, String key2) {
+            return key1.compareTo(key2);
+        }
+    }
 
-    private class CustomDataEntry extends ValueDataEntry {
+    private static class CustomDataEntry extends ValueDataEntry {
         CustomDataEntry(String x, Number value, Number value2, Number value3, Number value4) {
             super(x, value);
             setValue("value2", value2);
             setValue("value3", value3);
             setValue("value4", value4);
         }
-    } // end of dataentry class
+    } // end of Custom DataEntry class
 
 }
